@@ -35,5 +35,19 @@ async def home(request: Request, file: UploadFile = File(None)):
         model="gemini-2.5-pro",
         contents=prompt,
     )
+
+    local_scope = {}
+    exec(clean_python_code(response.text), {}, local_scope)
+    answers = local_scope.get("answers")
     
-    return {"code": response.text}
+    return answers
+
+def clean_python_code(code_str: str) -> str:
+    code_str = code_str.strip()
+    if code_str.startswith("```python"):
+        code_str = code_str.replace("```python", "").strip()
+    if code_str.endswith("```"):
+        code_str = code_str[:-3].strip()
+    print(f"Cleaned code: {code_str}")
+    
+    return code_str
