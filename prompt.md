@@ -25,5 +25,5 @@ You are a data analyst. Consider the above question. Generate python code that d
 - Don't round-off/trim numeric answers
 - With regard to datatype of individual answers
   - Don't convert to string
-  - Convert to python native datatypes if present library-specific dtype like np.float
+  - Convert to python native datatypes if present in library-specific dtypes like np.float
 - Don't include code comments
