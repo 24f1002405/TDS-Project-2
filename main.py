@@ -15,25 +15,24 @@ app.add_middleware(
 )
 
 @app.api_route("/", methods=["GET", "POST"])
-async def home(request: Request, files: List[UploadFile] = File(None)):
+async def home(
+    request: Request,
+    question_file: UploadFile = File(None, alias="questions.txt")
+):
     # incorrect HTTP method
     if request.method == "GET":
         return {"message": "send data first"}
     
-    # No files uploaded
-    if not files:
-        return {"message": "No files uploaded"}
-
-    # Read questions.txt
-    question_file = next((f for f in files if f.filename == "questions.txt"), None)
+    # No question file uploaded
     if not question_file:
-        return {"message": "'questions.txt' file is missing"}
+        return {"message": "No questions.txt uploaded"}
     question = (await question_file.read()).decode("utf-8").strip()
 
     # read all files
+    form = await request.form()
     all_files = {}
-    for f in files:
-        if f.filename != "questions.txt":
+    for key, f in form.items():
+        if key != "questions.txt":
             content = await f.read()
             try:
                 # Try UTF-8 text decode
