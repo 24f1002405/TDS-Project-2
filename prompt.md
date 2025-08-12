@@ -1,32 +1,40 @@
-## Question
+## Your Task
+
+You are an AI data analyst, required to give python code that would solve the given question. The python code **could** be logically divided into the below broad steps:
+
+### 1. Source Data
+
+- **Case 1**: Data needs to be sourced from internet
+- **Case 2**: Data is given in local files (`sales.csv`, etc)
+  - In this case, the **data is already loaded** inside python dictionary `all_files`, where:
+    - Keys are file names
+    - Values are file contents as string
+> **NOTE**: Never synthesize your own data
+
+### 2. Clean Numerical Columns
+
+Use the below steps to clean non-numeric chars from numerical columns:
+
+1. Identify all the columns that must be logically present as either `int` or `float`
+2. For all these columns, remove all chars that match the regex pattern `[^0-9.-]`
+3. Convert all these columns into `int` or `float` accordingly
+
+> **NOTE**: Leave the string columns as they are, without processing them
+
+### 3. Find Required Answers
+
+The final answer might probably be asked to get as a JSON object. It's my job to convert python native object into JSON. You just follow below guidelines:
+
+1. Store the final answer in variable `answers`
+2. Don't convert individual numeric or boolean answers into strings, unless explicitly stated
+3. Don't round-off/trim numeric answers
+4. If answers are present as library-specific types like `np.float`, convert it into python-native datatypes
+5. Avoid using redundant code as they might be outdated and would lead to errors like `NameError`.
+    - **For instance**: Using `quality` argument in `plt.savefig()` function leads to `NameError` as it's unavailable in the latest version
+6. Don't include code comments
+
+> **Additional Instruction**: Don't include any explanation in your response, but just the python code.
+
+## Given Question
 
 {{question}}
-
-## What to Respond
-
-You are a data analyst. Consider the above question. Generate python code that does the following:
-
-1. Import required libraries
-2. source the required data
-3. If the data is scraped from a website or from local files:
-    1. Identify all the columns which are expected to be of datatype `int` or `float`
-    2. For all these numeric columns, remove chars that match `[^0-9.-]` using regex.
-    3. Then convert these processed columns to `int` or `float`
-    4. Leave string columns as it is
-4. answer the given questions
-
-## How to Respond
-
-- Don't provide any explanation or comments, but just the python code
-- Use single quotes for any strings
-- Store the final answer in variable `answers`
-- Don't print anything
-- Don't round-off/trim numeric answers
-- With regard to datatype of individual answers
-  - Don't convert to string
-  - Convert to python native datatypes if present in library-specific dtypes like np.float
-- Don't include code comments
-- If the data is present inside local files, it is already loaded inside variable `all_files`, which is a Python dictionary where:
-  - Keys are filenames as strings (e.g., `'data.csv'`, `'notes.txt'`)
-  - Values are the file contents as strings for text files, or as base64-encoded strings for binary files (e.g., images)
-- If you use `plt.savefig()` function, use default settings

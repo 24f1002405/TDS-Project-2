@@ -16,16 +16,18 @@ app.add_middleware(
 
 @app.api_route("/", methods=["GET", "POST"])
 async def home(request: Request, files: List[UploadFile] = File(None)):
+    # incorrect HTTP method
     if request.method == "GET":
         return {"message": "send data first"}
     
+    # No files uploaded
     if not files:
-        return {"error": "No files uploaded"}
+        return {"message": "No files uploaded"}
 
     # Read questions.txt
     question_file = next((f for f in files if f.filename == "questions.txt"), None)
     if not question_file:
-        return {"error": "'questions.txt' file is missing"}
+        return {"message": "'questions.txt' file is missing"}
     question = (await question_file.read()).decode("utf-8").strip()
 
     # read all files
@@ -38,13 +40,23 @@ async def home(request: Request, files: List[UploadFile] = File(None)):
                 all_files[f.filename] = content.decode("utf-8").strip()
             except UnicodeDecodeError:
                 # If binary, store base64 string
-                all_files[f.filename] = base64.b64encode(content).decode("utf-8")
+                # all_files[f.filename] = base64.b64encode(content).decode("utf-8")
+                pass
 
     # prepare prompt
     with open("prompt.md", "r") as f:
         prompt = f.read().strip()
     prompt = prompt.replace("{{question}}", question)
-    
+
+    if all_files:
+        prompt += "\n\n### Supporting Files' Details\n\n"
+        for filename, content in all_files.items():
+            file_info = f"- **{filename}**"
+            if filename.endswith('.csv'):
+                file_info += f": {content.split('\n')[0]}"
+            
+            prompt += file_info + "\n"
+
     # send llm request
     client = genai.Client()
     response = client.models.generate_content(
@@ -53,7 +65,11 @@ async def home(request: Request, files: List[UploadFile] = File(None)):
     )
 
     local_scope = {"all_files": all_files}
-    exec(clean_python_code(response.text), {}, local_scope)
+    try:
+        exec(clean_python_code(response.text), {}, local_scope)
+    except Exception as e:
+        print(f"Error executing code: {e}")
+        return {"message": "Error executing code"}
     answers = local_scope.get("answers")
     
     return answers
