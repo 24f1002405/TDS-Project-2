@@ -24,7 +24,8 @@ async def home(
     # incorrect HTTP method
     if request.method == "GET":
         return {"message": "send data first"}
-    
+    print(f"Received {request.method} request from {request.client.host}")
+
     # No question file uploaded
     if not question_file:
         return {"message": "No questions.txt uploaded"}
@@ -58,17 +59,23 @@ async def home(
             
             prompt += file_info + "\n"
 
+        print(f"Files Received: {list(all_files.keys())}")
+
     # send llm request
+    print("Sending request to LLM...")
     response = await asyncio.to_thread(get_llm_response, prompt)
+    print("LLM response received")
 
     local_scope = {"all_files": all_files}
     try:
+        print("Executing code...")
         exec(clean_python_code(response.text), {}, local_scope)
     except Exception as e:
         print(e)
         return {"message": "Error executing code"}
     answers = local_scope.get("answers")
     
+    print("Successful response sent back !!!")
     return answers
 
 def clean_python_code(code_str: str) -> str:
