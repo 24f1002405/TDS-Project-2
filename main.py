@@ -4,6 +4,8 @@ from google import genai
 from typing import List
 import os
 import base64
+import asyncio
+import time
 
 app = FastAPI()
 app.add_middleware(
@@ -57,17 +59,13 @@ async def home(
             prompt += file_info + "\n"
 
     # send llm request
-    client = genai.Client()
-    response = client.models.generate_content(
-        model="gemini-2.5-pro",
-        contents=prompt,
-    )
+    response = await asyncio.to_thread(get_llm_response, prompt)
 
     local_scope = {"all_files": all_files}
     try:
         exec(clean_python_code(response.text), {}, local_scope)
     except Exception as e:
-        print(f"Error executing code: {e}")
+        print(e)
         return {"message": "Error executing code"}
     answers = local_scope.get("answers")
     
@@ -79,6 +77,24 @@ def clean_python_code(code_str: str) -> str:
         code_str = code_str.replace("```python", "").strip()
     if code_str.endswith("```"):
         code_str = code_str[:-3].strip()
-    print(f"Cleaned code: {code_str}")
     
     return code_str
+
+def get_llm_response(prompt: str, retries: int = 3):
+    client = genai.Client()
+
+    for attempt in range(1, retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=prompt,
+            )
+            if not response or not hasattr(response, 'text') or not response.text:
+                raise ValueError("Empty response from LLM")
+            
+            return response
+        except Exception as e:
+            print(f"Attempt {attempt} failed with {e}. Retrying in 60s...")
+            time.sleep(60)
+    
+    raise RuntimeError(f"Failed to get a valid response from the LLM after {retries} attempts")
