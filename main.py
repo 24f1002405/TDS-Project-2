@@ -7,6 +7,8 @@ import base64
 import asyncio
 import time
 import random
+from io import BytesIO
+from google.genai import types
 
 app = FastAPI()
 app.add_middleware(
@@ -39,6 +41,7 @@ async def home(
     # read all files
     form = await request.form()
     all_files = {}
+    binary_files = []
     for key, f in form.items():
         if key != "questions.txt":
             content = await f.read()
@@ -46,9 +49,14 @@ async def home(
                 # Try UTF-8 text decode
                 all_files[f.filename] = content.decode("utf-8").strip()
             except UnicodeDecodeError:
-                # If binary, store base64 string
-                # all_files[f.filename] = base64.b64encode(content).decode("utf-8")
-                pass
+                # If binary, store binary data
+                binary_files.append({
+                    "filename": f.filename,
+                    "content": content,
+                    "mime_type": f.content_type or get_mime_type(f.filename)
+                })
+    if binary_files:
+        print(f"[{request_id}]: Binary files received: {[f['filename'] for f in binary_files]}")
 
     # prepare prompt
     with open("prompt.md", "r") as f:
@@ -67,7 +75,7 @@ async def home(
         print(f"[{request_id}]: Files Received: {list(all_files.keys())}")
 
     # send llm request
-    response = await asyncio.to_thread(get_llm_response, prompt, request_id)
+    response = await asyncio.to_thread(get_llm_response, prompt, request_id, binary_files)
     print(f"[{request_id}]: LLM response received")
 
     # execute code and get answers
@@ -87,7 +95,7 @@ async def home(
         print(f"[{request_id}]: Error correction prompt prepared:\n{prompt}")
 
         # get corrected code from LLM
-        response = await asyncio.to_thread(get_llm_response, prompt, request_id)
+        response = await asyncio.to_thread(get_llm_response, prompt, request_id, binary_files)
         print(f"[{request_id}]: LLM response received")
 
         # execute corrected code
@@ -115,16 +123,47 @@ def clean_python_code(code_str: str, request_id: int) -> str:
     print(code_str)
     return code_str
 
-def get_llm_response(prompt: str, request_id: int, retries: int = 3):
-    client = genai.Client()
+def get_mime_type(file_name: str) -> str:
+    ext = os.path.splitext(file_name)[1].lower()
+    if ext in ['.jpg', '.jpeg']:
+        return 'image/jpeg'
+    elif ext == '.png':
+        return 'image/png'
+    elif ext == '.pdf':
+        return 'application/pdf'
+    else:
+        return 'application/octet-stream'
 
+def get_llm_response(prompt: str, request_id: int, binary_files: list = None, retries: int = 3):
     for attempt in range(1, retries + 1):
         try:
             print(f"[{request_id}]: Attempt {attempt} to get response from LLM...")
-            response = client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=prompt,
-            )
+
+            client = genai.Client()
+
+            # sending request without binary files
+            if not binary_files:
+                response = client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=prompt,
+                )
+            # sending request with binary files
+            else:
+                contents_with_binary = [
+                    types.Part.from_bytes(
+                        data=f['content'],
+                        mime_type=f['mime_type'],
+                    )
+                    for f in binary_files
+                ]
+                contents_with_binary.append(prompt)
+
+                response = client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=contents_with_binary,
+                )
+
+            # check for invalid response
             if not response or not hasattr(response, 'text') or not response.text:
                 raise ValueError(f"[{request_id}]: Empty response from LLM")
             
