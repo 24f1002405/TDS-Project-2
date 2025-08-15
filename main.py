@@ -76,8 +76,30 @@ async def home(
         print(f"[{request_id}]: Executing code...")
         exec(clean_python_code(response.text, request_id), {}, local_scope)
     except Exception as e:
-        print(f"[{request_id}]: {e}")
-        return {"message": "Error executing code"}
+        print(f"[{request_id}]: Error Executing Code: {str(e)}")
+
+        # error correction prompt
+        with open("error-correction-prompt.md", "r") as f:
+            prompt = f.read().strip()
+        prompt = prompt.replace("{{question}}", question)
+        prompt = prompt.replace("{{error}}", str(e))
+        prompt = prompt.replace("{{code}}", response.text)
+        print(f"[{request_id}]: Error correction prompt prepared:\n{prompt}")
+
+        # get corrected code from LLM
+        response = await asyncio.to_thread(get_llm_response, prompt, request_id)
+        print(f"[{request_id}]: LLM response received")
+
+        # execute corrected code
+        local_scope = {"all_files": all_files}
+        try:
+            print(f"[{request_id}]: Executing corrected code:")
+            exec(clean_python_code(response.text, request_id), {}, local_scope)
+        except Exception as e:
+            print(f"[{request_id}]: Error executing corrected code: {str(e)}")
+            print(f"[{request_id}]: Sending back failure msg after {time.time() - start_time}s")
+            return {'message': f"Error executing corrected code: {str(e)}"}
+
     answers = local_scope.get("answers")
     
     print(f"[{request_id}]: Successful response sent back in {time.time() - start_time}s !!!")
