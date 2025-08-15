@@ -36,6 +36,7 @@ The final answer might probably be asked to get as a JSON object. It's my job to
 5. Avoid using redundant code as they might be outdated and would lead to errors like `NameError`.
     - **For instance**: Using `quality` argument in `plt.savefig()` function leads to `NameError` as it's unavailable in the latest version
 6. Don't include code comments
+7. Avoid defining and using functions. If functions are necessary, then consider its scope isolated from the global scope and so import all the required libraries again inside functions.
 
 > **Additional Instruction**: Don't include any explanation in your response, but just the python code.
 
