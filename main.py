@@ -72,7 +72,7 @@ async def home(
     local_scope = {"all_files": all_files}
     try:
         print(f"[{request_id}]: Executing code...")
-        exec(utils.clean_python_code(response.text, request_id), {}, local_scope)
+        exec(utils.clean_python_code(response.text, request_id), globals(), local_scope)
     except Exception as e:
         print(f"[{request_id}]: Error Executing Code: {str(e)}")
 
@@ -92,7 +92,7 @@ async def home(
         local_scope = {"all_files": all_files}
         try:
             print(f"[{request_id}]: Executing corrected code:")
-            exec(utils.clean_python_code(response.text, request_id), {}, local_scope)
+            exec(utils.clean_python_code(response.text, request_id), globals(), local_scope)
         except Exception as e:
             print(f"[{request_id}]: Error executing corrected code: {str(e)}")
             print(f"[{request_id}]: Sending back failure msg after {time.time() - start_time}s")
