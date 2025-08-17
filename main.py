@@ -82,7 +82,7 @@ async def home(
         prompt = prompt.replace("{{question}}", question)
         prompt = prompt.replace("{{error}}", str(e))
         prompt = prompt.replace("{{code}}", response.text)
-        print(f"[{request_id}]: Error correction prompt prepared:\n{prompt}")
+        print(f"[{request_id}]: Sending LLM request for error correction")
 
         # get corrected code from LLM
         response = await asyncio.to_thread(utils.get_llm_response, prompt, request_id, binary_files)
