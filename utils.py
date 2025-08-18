@@ -1,7 +1,7 @@
 import os
 from google import genai
 from google.genai import types
-import time
+import asyncio
 
 def clean_python_code(code_str: str, request_id: int) -> str:
     code_str = code_str.strip()
@@ -24,7 +24,7 @@ def get_mime_type(file_name: str) -> str:
     else:
         return 'application/octet-stream'
 
-def get_llm_response(prompt: str, request_id: int, binary_files: list = None, retries: int = 3):
+async def get_llm_response(prompt: str, request_id: int, binary_files: list = None, retries: int = 3):
     for attempt in range(1, retries + 1):
         try:
             print(f"[{request_id}]: Attempt {attempt} to get response from LLM...")
@@ -33,7 +33,7 @@ def get_llm_response(prompt: str, request_id: int, binary_files: list = None, re
 
             # sending request without binary files
             if not binary_files:
-                response = client.models.generate_content(
+                response = await client.aio.models.generate_content(
                     model="gemini-2.5-pro",
                     contents=prompt,
                 )
@@ -48,7 +48,7 @@ def get_llm_response(prompt: str, request_id: int, binary_files: list = None, re
                 ]
                 contents_with_binary.append(prompt)
 
-                response = client.models.generate_content(
+                response = await client.aio.models.generate_content(
                     model="gemini-2.5-pro",
                     contents=contents_with_binary,
                 )
@@ -57,9 +57,9 @@ def get_llm_response(prompt: str, request_id: int, binary_files: list = None, re
             if not response or not hasattr(response, 'text') or not response.text:
                 raise ValueError(f"[{request_id}]: Empty response from LLM")
             
-            return response
+            return response.text
         except Exception as e:
             print(f"[{request_id}]: Attempt {attempt} failed with {e}. Retrying in 60s...")
-            time.sleep(60)
+            await asyncio.sleep(60)
     
     raise RuntimeError(f"[{request_id}]: Failed to get a valid response from the LLM after {retries} attempts")

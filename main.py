@@ -65,14 +65,14 @@ async def home(
         print(f"[{request_id}]: Files Received: {list(all_files.keys())}")
 
     # send llm request
-    response = await asyncio.to_thread(utils.get_llm_response, prompt, request_id, binary_files)
+    response = await utils.get_llm_response(prompt, request_id, binary_files)
     print(f"[{request_id}]: LLM response received")
 
     # execute code and get answers
     local_scope = {"all_files": all_files}
     try:
         print(f"[{request_id}]: Executing code...")
-        exec(utils.clean_python_code(response.text, request_id), globals(), local_scope)
+        exec(utils.clean_python_code(response, request_id), globals(), local_scope)
     except Exception as e:
         print(f"[{request_id}]: Error Executing Code: {str(e)}")
 
@@ -81,18 +81,18 @@ async def home(
             prompt = f.read().strip()
         prompt = prompt.replace("{{question}}", question)
         prompt = prompt.replace("{{error}}", str(e))
-        prompt = prompt.replace("{{code}}", response.text)
+        prompt = prompt.replace("{{code}}", response)
         print(f"[{request_id}]: Sending LLM request for error correction")
 
         # get corrected code from LLM
-        response = await asyncio.to_thread(utils.get_llm_response, prompt, request_id, binary_files)
+        response = await utils.get_llm_response(prompt, request_id, binary_files)
         print(f"[{request_id}]: LLM response received")
 
         # execute corrected code
         local_scope = {"all_files": all_files}
         try:
             print(f"[{request_id}]: Executing corrected code:")
-            exec(utils.clean_python_code(response.text, request_id), globals(), local_scope)
+            exec(utils.clean_python_code(response, request_id), globals(), local_scope)
         except Exception as e:
             print(f"[{request_id}]: Error executing corrected code: {str(e)}")
             print(f"[{request_id}]: Sending back failure msg after {time.time() - start_time}s")
