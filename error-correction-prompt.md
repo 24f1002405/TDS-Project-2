@@ -1,8 +1,11 @@
 ## Your Task
 
-For the given question, I executed the given python code and got the given error. Give me the correct python code to resolve the error.
+For the below given question, I executed the below given python code and got the below given error. Modify my python code to resolve the error.
 
-> **NOTE**: Don't include any explanation in your response, but just the python code
+### Instructions
+
+- **Don't include any explanation** in your response, but **just the modified python code**
+- Don't change logic of the code or modify anywhere where it's not necessary. **Modication should be minimal** while making sure the error is resolved.
 
 ## Given Question
 
