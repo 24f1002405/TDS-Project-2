@@ -62,6 +62,7 @@ async def get_llm_response(prompt: str, request_id: int, binary_files: list = No
             if not response or not hasattr(response, 'text') or not response.text:
                 raise ValueError(f"[{request_id}]: Empty response from LLM")
             
+            print(f"[{request_id}]: LLM response received")
             return response.text
         except Exception as e:
             print(f"[{request_id}]: Attempt {attempt} failed with {e}. Retrying in 60s...")
@@ -172,5 +173,22 @@ def prepare_prompt(question: str, text_files={}, file_path='prompt.md') -> str:
                 file_info += f": {content.split('\n')[0]}"
             
             prompt += file_info + "\n"
+
+    return prompt
+
+def prepare_error_prompt(
+    question: str,
+    error: str,
+    code: str,
+    file_path='error-correction-prompt.md'
+) -> str:
+    # get error correction prompt template
+    with open(file_path, 'r') as f:
+        prompt = f.read().strip()
+    
+    # replace placeholders
+    prompt = prompt.replace("{{question}}", question)
+    prompt = prompt.replace("{{error}}", error)
+    prompt = prompt.replace("{{code}}", code)
 
     return prompt

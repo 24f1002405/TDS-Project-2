@@ -35,12 +35,9 @@ async def home(
     if binary_files:
         print(f"[{request_id}]: Binary files received: {[f['filename'] for f in binary_files]}")
 
-    # prepare prompt
+    # prepare prompt and get LLM response
     prompt = utils.prepare_prompt(question, text_files)
-
-    # send llm request
     llm_response = await utils.get_llm_response(prompt, request_id, binary_files)
-    print(f"[{request_id}]: LLM response received")
 
     # execute code and get answers
     print(f"[{request_id}]: Executing code:")
@@ -51,16 +48,11 @@ async def home(
         print(f"[{request_id}]: Error Executing Code: {code_exec_response['error']}")
 
         # error correction prompt
-        with open("error-correction-prompt.md", "r") as f:
-            prompt = f.read().strip()
-        prompt = prompt.replace("{{question}}", question)
-        prompt = prompt.replace("{{error}}", code_exec_response['error'])
-        prompt = prompt.replace("{{code}}", llm_response)
-        print(f"[{request_id}]: Sending LLM request for error correction")
-
+        prompt = utils.prepare_error_prompt(question, code_exec_response['error'], llm_response)
+        
         # get corrected code from LLM
+        print(f"[{request_id}]: Sending LLM request for error correction")
         llm_response = await utils.get_llm_response(prompt, request_id, binary_files)
-        print(f"[{request_id}]: LLM response received")
 
         # execute corrected code
         print(f"[{request_id}]: Executing corrected code:")
