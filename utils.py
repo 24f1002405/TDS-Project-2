@@ -1,12 +1,16 @@
 import os
 from google import genai
 from google.genai import types
-import asyncio
 import importlib
+from cryptography.fernet import Fernet
+import itertools
+from random import shuffle
 
 # to avoid matplotlib backend issues in headless environments
 import matplotlib
 matplotlib.use('Agg')
+
+GEMINI_API_KEYS = []
 
 def clean_python_code(code_str: str) -> str:
     code_str = code_str.strip()
@@ -29,12 +33,12 @@ def get_mime_type(file_name: str) -> str:
     else:
         return 'application/octet-stream'
 
-async def get_llm_response(prompt: str, request_id: int, binary_files: list = None, retries: int = 3):
+async def get_llm_response(prompt: str, request_id: int, binary_files: list = None, retries: int = 8):
     for attempt in range(1, retries + 1):
         try:
             print(f"[{request_id}]: Attempt {attempt} to get response from LLM...")
 
-            client = genai.Client()
+            client = genai.Client(api_key=get_api_key())
 
             # sending request without binary files
             if not binary_files:
@@ -65,8 +69,7 @@ async def get_llm_response(prompt: str, request_id: int, binary_files: list = No
             print(f"[{request_id}]: LLM response received")
             return response.text
         except Exception as e:
-            print(f"[{request_id}]: Attempt {attempt} failed with {e}. Retrying in 60s...")
-            await asyncio.sleep(60)
+            print(f"[{request_id}]: Attempt {attempt} failed with {e}. Retrying...")
     
     raise RuntimeError(f"[{request_id}]: Failed to get a valid response from the LLM after {retries} attempts")
 
@@ -192,3 +195,24 @@ def prepare_error_prompt(
     prompt = prompt.replace("{{code}}", code)
 
     return prompt
+
+def load_gemini_api_keys(file_path='gemini-keys.txt', env_var='ENCRYPTION_KEY'):
+    encryption_key = os.getenv(env_var)
+    if not encryption_key:
+        raise ValueError(f"{env_var} is not set in environment variables")
+    
+    fernet = Fernet(encryption_key.encode())
+
+    keys = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            decrypted = fernet.decrypt(line.strip().encode()).decode()
+            keys.append(decrypted)
+    shuffle(keys)
+    
+    global GEMINI_API_KEYS
+    GEMINI_API_KEYS = itertools.cycle(keys)
+load_gemini_api_keys()
+
+def get_api_key() -> str:
+    return next(GEMINI_API_KEYS)
