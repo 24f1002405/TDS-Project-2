@@ -14,6 +14,7 @@ async def home(
     request: Request,
     question_file: UploadFile = File(None, alias="questions.txt")
 ):
+    # request init
     start_time = time.time()
     request_id = random.randint(1000, 9999)
 
@@ -23,46 +24,19 @@ async def home(
     print(f"[{request_id}]: Request ID: {request_id}")
     print(f"[{request_id}]: Received {request.method} request from {request.client.host}")
 
-    # No question file uploaded
+    # read files
     if not question_file:
         return {"message": "No questions.txt uploaded"}
     question = (await question_file.read()).decode("utf-8").strip()
-
-    # read all files
-    form = await request.form()
-    all_files = {}
-    binary_files = []
-    for key, f in form.items():
-        if key != "questions.txt":
-            content = await f.read()
-            try:
-                # Try UTF-8 text decode
-                all_files[f.filename] = content.decode("utf-8").strip()
-            except UnicodeDecodeError:
-                # If binary, store binary data
-                binary_files.append({
-                    "filename": f.filename,
-                    "content": content,
-                    "mime_type": f.content_type or utils.get_mime_type(f.filename)
-                })
+    text_files, binary_files = await utils.get_files(request)
+    
+    if text_files:
+        print(f"[{request_id}]: Files Received: {list(text_files.keys())}")
     if binary_files:
         print(f"[{request_id}]: Binary files received: {[f['filename'] for f in binary_files]}")
 
     # prepare prompt
-    with open("prompt.md", "r") as f:
-        prompt = f.read().strip()
-    prompt = prompt.replace("{{question}}", question)
-
-    if all_files:
-        prompt += "\n\n### Supporting Files' Details\n\n"
-        for filename, content in all_files.items():
-            file_info = f"- **{filename}**"
-            if filename.endswith('.csv'):
-                file_info += f": {content.split('\n')[0]}"
-            
-            prompt += file_info + "\n"
-
-        print(f"[{request_id}]: Files Received: {list(all_files.keys())}")
+    prompt = utils.prepare_prompt(question, text_files)
 
     # send llm request
     llm_response = await utils.get_llm_response(prompt, request_id, binary_files)
@@ -71,7 +45,7 @@ async def home(
     # execute code and get answers
     print(f"[{request_id}]: Executing code:")
     code_str = utils.clean_python_code(llm_response)
-    code_exec_response = await asyncio.to_thread(utils.execute_code, code_str, all_files)
+    code_exec_response = await asyncio.to_thread(utils.execute_code, code_str, text_files)
 
     if not code_exec_response['success']:
         print(f"[{request_id}]: Error Executing Code: {code_exec_response['error']}")
@@ -91,7 +65,7 @@ async def home(
         # execute corrected code
         print(f"[{request_id}]: Executing corrected code:")
         code_str = utils.clean_python_code(llm_response)
-        code_exec_response = await asyncio.to_thread(utils.execute_code, code_str, all_files)
+        code_exec_response = await asyncio.to_thread(utils.execute_code, code_str, text_files)
 
         if not code_exec_response['success']:
             print(f"[{request_id}]: Error executing corrected code: {code_exec_response['error']}")

@@ -135,3 +135,42 @@ def execute_code(code_str: str, all_files: dict):
         response['error'] = str(e)
     
     return response
+
+async def get_files(request):
+    form = await request.form()
+    text_files = {}
+    binary_files = []
+
+    for key, f in form.items():
+        if key != "questions.txt":
+            content = await f.read()
+            try:
+                text_files[f.filename] = content.decode("utf-8").strip()
+            except UnicodeDecodeError:
+                binary_files.append({
+                    "filename": f.filename,
+                    "content": content,
+                    "mime_type": f.content_type or get_mime_type(f.filename)
+                })
+    
+    return text_files, binary_files
+
+def prepare_prompt(question: str, text_files={}, file_path='prompt.md') -> str:
+    # get prompt template
+    with open(file_path, "r") as f:
+        prompt = f.read().strip()
+    
+    # add question in template
+    prompt = prompt.replace("{{question}}", question)
+
+    # add text files' details in template
+    if text_files:
+        prompt += "\n\n### Supporting Files' Details\n\n"
+        for filename, content in text_files.items():
+            file_info = f"- **{filename}**"
+            if filename.endswith('.csv'):
+                file_info += f": {content.split('\n')[0]}"
+            
+            prompt += file_info + "\n"
+
+    return prompt
